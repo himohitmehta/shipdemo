@@ -1,51 +1,83 @@
-<img src=".github/video.svg" width="130" alt="">
+# shipdemo: product demo videos for every platform
 
-# /video-demo
+**shipdemo** is an AI agent skill that turns your web app into narrated **product demo videos**. It writes the script, records the screen with voice-over and captions, and exports a version for each place you post: Instagram and Facebook Reels, YouTube Shorts, YouTube, LinkedIn, X and your own website.
 
-Skill to make your agent record demo of your web app with voice over all on your machine.
+It works with Claude Code and other agents that support skills. Everything runs on your own machine.
 
-Given below is a sample video generated using the skill for [roadmap.sh](https://roadmap.sh).
+<!-- TODO before publishing: a 10-second sample video here (framed reel + wide laptop with zoom). -->
 
-https://github.com/user-attachments/assets/c20907c2-89a4-42a8-95d6-271ba3a60b80
+## Use it for
 
-## Record a Demo
+- **Product demo videos** for a landing page, a sales call or an investor update
+- **Feature launch videos** when you ship something new
+- **Video demos and walkthroughs** of a signup, checkout or onboarding flow
+- **Social clips**: Reels, Shorts, LinkedIn and X posts, cut from the same recording
+- **Product tours** split into chapters, as one long YouTube video
+- **Screencasts and explainer videos** with a voice-over and captions you can switch on
+- **App screenshots** for your website and store listings, taken at retina size
 
-Install the skill
+## How it works
+
+1. **Script.** You say what to show. The agent writes short voice lines: a hook, the steps, the payoff.
+2. **Record.** It builds your app, fills it with sample data and records each scene in Chromium, at 60 fps. A cursor moves and a highlight dims everything except the part the voice is talking about.
+3. **Voice and captions.** A local text-to-speech voice reads the script. Captions are made from the script itself, so they match the voice word for word (`.srt`, `.vtt` and burned in).
+4. **Check.** It checks that the voice says every line, scans the frames for error messages and measures the frame rate.
+5. **Variants.** You choose which versions you want, or all of them.
+
+## Variants
+
+Record once, then export the shapes you need.
+
+| Variant | Shape | Made for |
+|---|---|---|
+| `reel` | 9:16, phone screen in a frame, hook on top, captions under it | Instagram Reels, Facebook Reels, YouTube Shorts |
+| `wide-phone` | 16:9, phone on the left, hook and captions on the right | YouTube, X, LinkedIn |
+| `wide-laptop` | 16:9, laptop screen in a frame, hook on top | YouTube, X, LinkedIn |
+| `wide-laptop-zoom` | the same, zooming in on each highlighted part | YouTube, X, LinkedIn |
+| `web` | the plain video with a captions file; your page draws the frame | your website or docs |
+
+Ask for `all`, or for a list such as `reel, wide-laptop-zoom`. A new variant is one entry in a presets file, so adding your own takes a few lines.
+
+## Install
 
 ```bash
-npx skills add nilbuild/video-demo
+npx skills add himohitmehta/shipdemo
 ```
 
-Then ask your agent 
+Then ask your agent:
 
-```bash
-/video-demo [explain what to recorded]
-
-/video-demo record a demo of https://example.com
-/video-demo record the checkout flow on https://example.com, use cash on delivery
-/video-demo visit http://roadmap.sh and record the roadmap search flow
-/video-demo record the login flow in the current project
+```text
+/shipdemo record a demo of https://example.com
+/shipdemo record the checkout flow in this project, pay with cash on delivery
+/shipdemo make a 60-second product demo of the new invoices page, reel and wide-laptop
+/shipdemo film the onboarding on a phone screen and add captions
 ```
 
-Be as broad or as specific as you like. You can also add video instructions too e.g. "tell them it works offline now", "mention the keyboard shortcut", "keep it under twenty seconds".
+Say as much or as little as you like. You can add notes such as "mention the keyboard shortcut" or "keep it under thirty seconds".
 
-## Ask for updates
+## Change anything
 
-If you are not happy with the produced recording, you can ask for updates to the recorded video e.g.
+If a take isn't right, say what's wrong and it records again:
 
 - "that line is too long", "say screenshots, not stills"
-- "zoom in more on the toolbar", "stop zooming so much"
-- "slow down at the end", "say thanks for watching at the end"
-- "record the calendar first", "record the pricing page too"
-- "try a different voice", "no voice-over on this one"
-
-Say what is wrong and it can keep re-recording until you are happy.
+- "highlight the toolbar", "slow down at the end"
+- "record the pricing page too", "try a different voice"
+- "make a LinkedIn version", "move the captions up"
 
 ## What you get
 
-An mp4 video is produced with the voice-over on it. It also keeps screenshots at every moment
-worth keeping. Everything is done on your local machine.
+For each scene: an mp4 with voice-over, a captioned mp4, `.srt` and `.vtt` captions, a poster, retina screenshots and the script with timings. For the whole run: a full tour with chapters, a manifest and an `index.html` to watch everything. Variants go in their own folders beside the originals.
+
+## Requirements
+
+Node 22.18 or newer and ffmpeg. The skill installs Chromium (about 250 MB) and, if you want a voice, a local text-to-speech model (about 350 MB). It asks before installing anything.
+
+## Credits
+
+shipdemo's recording engine started from [video-demo](https://github.com/nilbuild/video-demo) by [Kamran Ahmed](https://kamran.fyi), released under the MIT licence. shipdemo adds scripts, captions, checks and the platform variants.
 
 ## Licence
 
-MIT © [Kamran Ahmed](https://kamran.fyi).
+MIT. See [LICENSE](LICENSE).
+
+<!-- Keywords: product demo video, video demo, demo video maker, product video, product walkthrough, screencast, screen recording, explainer video, feature launch video, app demo, SaaS demo, product tour, Instagram Reels, YouTube Shorts, LinkedIn video, X video, captions, voice-over, Claude Code skill, AI agent skill, Playwright. -->

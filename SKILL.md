@@ -1,9 +1,9 @@
 ---
-name: video-demo
-description: Films a web app as narrated, zooming, cursor-driven demo videos with retina screenshots, either from a repo it builds and mocks or from a live URL as it is served. Use when the user asks for a demo video, product video, walkthrough, screencast, screen recording of an app or of a URL, hero or landing-page footage, app screenshots for a website, "show off this feature", "record a demo of <url>", or wants to add, re-film, re-narrate or fix a demo scene.
+name: shipdemo
+description: Makes narrated product demo videos of a web app — demo video, product video, video demo, walkthrough, screencast, explainer, feature launch or product tour — from one script, with voice-over, captions and retina screenshots, filmed from a repo it builds and mocks or from a live URL. Outputs for every platform — Instagram and Facebook Reels, YouTube Shorts and videos, LinkedIn, X and a website demo — in phone (9:16) and laptop (16:9) versions. Use when the user asks for a demo video, product demo, product video, walkthrough, screencast, screen recording of an app or a URL, a feature or launch video, social clips of a product, hero or landing-page footage, app screenshots for a website, "show off this feature", "record a demo of <url>", or wants to add, re-film, re-narrate, re-caption or re-format a demo.
 ---
 
-# Video demo
+# shipdemo
 
 `scripts/demo` films a web app and writes its corpus to
 `~/demo-reels-out/<workspace>/` (`DEMO_OUT_ROOT` moves the
