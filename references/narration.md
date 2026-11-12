@@ -1,8 +1,12 @@
 # Narration: the voice and the words
 
-Every `actor.say` line becomes spoken voice-over. There are no subtitles in
-the finished asset — the words either work said out loud, or they don't work
-at all.
+Every `actor.say` line becomes spoken voice-over. Captions are off by
+default — the words have to work said out loud. When asked for
+(`DEMO_CAPTIONS=1`, or `captions: true` in the config), `studio/captions.ts`
+cuts them from the script and each line's real wav length: `<scene>.srt`,
+`<scene>.vtt` and `<scene>.captioned.mp4` beside the clip. Extra voices for an
+audition come from `DEMO_VOICE_VARIANTS` (comma-separated Kokoro names): one
+take, one more mix per voice, each with its own captions.
 
 ## The register
 

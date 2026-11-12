@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
-import { cp, readFile, readdir, rm, stat } from 'node:fs/promises';
+import { cp, mkdir, readFile, readdir, rm, stat, symlink } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 
-import { APP_ROOT, PROJECT, SITE, demo } from './studio/config.ts';
+import { APP_ROOT, PROJECT, SERVER, SITE, demo } from './studio/config.ts';
 
 /**
  * Builds the app fresh, then puts the result somewhere private.
@@ -78,17 +78,50 @@ async function readAssets() {
 process.stdout.write(`demo: building (${demo.build.command})\n`);
 await runBuild(demo.build.command);
 
-const built = await stat(join(OUTPUT, 'index.html')).catch(() => null);
+/**
+ * A static build is only a build if it has a page to open. A server build has
+ * no `index.html` (Next writes its pages under `server/`), so there the
+ * directory existing is the whole check, and the server starting is the rest.
+ */
+const built = SERVER
+  ? await stat(OUTPUT).catch(() => null)
+  : await stat(join(OUTPUT, 'index.html')).catch(() => null);
 if (!built) {
   process.stderr.write(
-    `demo: build finished but ${OUTPUT} has no index.html.\n` +
+    `demo: build finished but ${OUTPUT} ${SERVER ? 'does not exist' : 'has no index.html'}.\n` +
       '      check build.output in demo/demo.config.ts.\n'
   );
   process.exit(1);
 }
 
 await rm(PINNED, { recursive: true, force: true });
-await cp(OUTPUT, PINNED, { recursive: true });
+
+if (SERVER) {
+  /**
+   * The output keeps its own name inside `.build`, because the server looks
+   * for it by that name (`next start` reads `./.next`). Caches are left
+   * behind: Next's `cache/` is hundreds of megabytes nothing at runtime
+   * reads, and `dev/` belongs to a dev server that may be running right now.
+   */
+  const skip = new Set(['cache', 'dev']);
+  await mkdir(PINNED, { recursive: true });
+  await cp(OUTPUT, join(PINNED, demo.build.output), {
+    recursive: true,
+    filter: (source) =>
+      source === OUTPUT || !skip.has(relative(OUTPUT, source).split('/')[0]),
+  });
+  /**
+   * Linked, not copied: `node_modules` is the one thing too large to copy
+   * and too stable to need it, and the config files are read once at start.
+   * An install that rewrites `node_modules` mid-run can still hurt, but the
+   * build itself, which is what a keystroke invalidates, is private.
+   */
+  for (const name of SERVER.link ?? []) {
+    await symlink(join(APP_ROOT, name), join(PINNED, name));
+  }
+} else {
+  await cp(OUTPUT, PINNED, { recursive: true });
+}
 
 const assets = await readAssets();
 

@@ -73,21 +73,19 @@ else
   warn "nice not found; the encoder will run at normal priority, competing with the browser for CPU while filming" "POSIX systems ship nice; this is expected only on an unsupported platform"
 fi
 
-PLAYWRIGHT_CACHES=("$HOME/Library/Caches/ms-playwright" "$HOME/.cache/ms-playwright")
-if [ -n "${PLAYWRIGHT_BROWSERS_PATH:-}" ]; then
-  PLAYWRIGHT_CACHES=("$PLAYWRIGHT_BROWSERS_PATH" "${PLAYWRIGHT_CACHES[@]}")
+# The build the engine's own Playwright launches, not any Chromium in the
+# cache: another project's Playwright leaves a different revision there, and
+# a check that accepted it passed while every film failed to start.
+CHROMIUM_BIN=""
+if [ -f "$SKILL/node_modules/playwright-core/package.json" ]; then
+  CHROMIUM_BIN="$(cd "$SKILL" && node -e "process.stdout.write(require('playwright-core').chromium.executablePath())" 2>/dev/null || true)"
 fi
-CHROMIUM_DIR=""
-for dir in "${PLAYWRIGHT_CACHES[@]}"; do
-  if [ -d "$dir" ] && find "$dir" -maxdepth 1 -type d -name "chromium-*" 2>/dev/null | grep -q .; then
-    CHROMIUM_DIR="$dir"
-    break
-  fi
-done
-if [ -n "$CHROMIUM_DIR" ]; then
-  ok "playwright chromium installed ($CHROMIUM_DIR)"
+if [ -n "$CHROMIUM_BIN" ] && [ -x "$CHROMIUM_BIN" ]; then
+  ok "playwright chromium installed ($CHROMIUM_BIN)"
+elif [ -n "$CHROMIUM_BIN" ]; then
+  fail "the engine's chromium build is missing ($CHROMIUM_BIN)" "$SKILL/node_modules/.bin/playwright install chromium"
 else
-  fail "playwright chromium not installed" "npx playwright install chromium"
+  fail "playwright chromium not checked: the engine is not installed" "$SKILL/scripts/install.sh"
 fi
 
 if command -v uv >/dev/null 2>&1; then

@@ -9,12 +9,14 @@ import {
   FPS,
   STAGE,
   TRACE_FRAMES,
+  CAPTIONS,
   VIDEO,
   VIDEO_SCALE,
   WEBM,
 } from './config.ts';
-import type { Mark } from './voice.ts';
-import { mixArgs, speak, voiceReady } from './voice.ts';
+import { burnArgs, writeCaptions } from './captions.ts';
+import { VOICE_VARIANTS, mixArgs, speak, voiceReady } from './voice.ts';
+import type { Mark, SpokenLine } from './voice.ts';
 
 /**
  * How a browser is filmed without a screen recorder.
@@ -602,6 +604,28 @@ export class Recorder {
       const mixed = mixArgs(silent, spoken, mp4, seconds, encode);
       overrunSeconds = mixed.overrun;
       await run('ffmpeg', mixed.args);
+
+      /**
+       * Captions and voice variants both hang off the take just mixed: the
+       * captions off its lines' real lengths, and each variant off the same
+       * silent picture with the same marks, spoken by another voice.
+       */
+      const caption = async (base: string, lines: SpokenLine[], clip: string) => {
+        if (!CAPTIONS) {
+          return;
+        }
+        const srt = await writeCaptions(base, lines);
+        await run('ffmpeg', burnArgs(clip, srt, `${base}.captioned.mp4`, encode));
+      };
+
+      await caption(basePath, spoken, mp4);
+      for (const voice of VOICE_VARIANTS) {
+        const lines = await speak(this.marks, voice);
+        const clip = `${basePath}.${voice}.mp4`;
+        await run('ffmpeg', mixArgs(silent, lines, clip, seconds, encode).args);
+        await caption(`${basePath}.${voice}`, lines, clip);
+      }
+
       await rm(silent, { force: true });
     }
 

@@ -1,5 +1,7 @@
 import type { Page } from '@playwright/test';
 
+import { BAND_DIM, POINTER } from './config.ts';
+
 /**
  * The parts of a demo that are not the app: a cursor and a key hint.
  *
@@ -30,6 +32,8 @@ export type OverlaySide = {
     ms: number
   ): { tx: number; ty: number; scale: number };
   still(tx: number, ty: number, scale: number): void;
+  band(top: number | null, height?: number, left?: number, width?: number): void;
+  follow(els: Element[] | null): void;
 };
 
 declare global {
@@ -38,7 +42,7 @@ declare global {
   }
 }
 
-function overlaySource() {
+function overlaySource({ pointer, dim }: { pointer: 'arrow' | 'touch'; dim: number }) {
   const ROOT_ID = 'demo-overlay';
 
   const css = `
@@ -143,6 +147,50 @@ function overlaySource() {
 
 `;
 
+  /*
+   * A phone has no arrow: a fingertip, centred on the tap, that dips and
+   * darkens while pressed. Same translate-before-scale rule as the arrow,
+   * with the origin at the dot's centre.
+   */
+  /*
+   * The band: a window onto the subject, everything around it dimmed. Full
+   * width on a phone; on a wider screen it frames the subject on all sides. A box-shadow larger than any screen is the scrim, so the
+   * window itself is a plain transparent box that can glide between subjects.
+   */
+  const BAND_CSS = `
+#${ROOT_ID} .dc-band {
+  position: fixed;
+  left: 0;
+  width: 100%;
+  top: 0;
+  height: 0;
+  border-radius: 0;
+  box-shadow: 0 0 0 200vmax rgba(17, 17, 17, ${dim});
+  opacity: 0;
+  transition: opacity 320ms ease, top 420ms cubic-bezier(0.33, 0, 0.22, 1),
+    height 420ms cubic-bezier(0.33, 0, 0.22, 1),
+    left 420ms cubic-bezier(0.33, 0, 0.22, 1),
+    width 420ms cubic-bezier(0.33, 0, 0.22, 1);
+}
+#${ROOT_ID} .dc-band[data-box='true'] { border-radius: 14px; }
+#${ROOT_ID} .dc-band[data-on='true'] { opacity: 1; }
+`;
+
+  const TOUCH_CSS = `
+#${ROOT_ID} .dc {
+  width: 30px;
+  height: 30px;
+  margin: -15px 0 0 -15px;
+  transform-origin: 15px 15px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.38);
+  border: 2px solid rgba(17, 17, 17, 0.42);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.22);
+  transition: scale 120ms cubic-bezier(0.2, 0, 0.2, 1), background 120ms ease;
+}
+#${ROOT_ID}[data-press='true'] .dc { scale: 0.8; background: rgba(17, 17, 17, 0.28); }
+`;
+
   const ARROW = `
 <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
   <path d="M5 2.2 5 20.4 9.9 15.9 13.1 23.4 16.4 22 13.2 14.6 20 14.2Z"
@@ -156,14 +204,15 @@ function overlaySource() {
     }
 
     const style = document.createElement('style');
-    style.textContent = css;
+    style.textContent = (pointer === 'touch' ? css + TOUCH_CSS : css) + BAND_CSS;
 
     const root = document.createElement('div');
     root.id = ROOT_ID;
     root.setAttribute('aria-hidden', 'true');
     root.innerHTML = `
+      <div class="dc-band"></div>
       <div class="dc-hold"></div>
-      <div class="dc">${ARROW}</div>
+      <div class="dc">${pointer === 'touch' ? '' : ARROW}</div>
       <div class="dc-stack">
         <div class="dc-keys"></div>
       </div>`;
@@ -173,6 +222,8 @@ function overlaySource() {
     const cursor = root.querySelector('.dc') as HTMLElement;
     const hold = root.querySelector('.dc-hold') as HTMLElement;
     const keys = root.querySelector('.dc-keys') as HTMLElement;
+    const band = root.querySelector('.dc-band') as HTMLElement;
+    let following: Element[] | null = null;
 
     function place(nx: number, ny: number) {
       const shift = `${nx}px ${ny}px`;
@@ -331,6 +382,74 @@ function overlaySource() {
 
         void app.offsetHeight;
       },
+      /** Shows the band over a strip of the screen, or fades it with null. */
+      band(top: number | null, height = 0, left?: number, width?: number) {
+        if (top === null) {
+          band.dataset.on = 'false';
+          band.dataset.at = '';
+          return;
+        }
+        const key = `${top}|${height}|${left}|${width}`;
+        if (band.dataset.on === 'true' && band.dataset.at === key) return;
+        band.dataset.at = key;
+        const put = () => {
+          band.style.top = `${top}px`;
+          band.style.height = `${height}px`;
+          band.style.left = left === undefined ? '0px' : `${left}px`;
+          band.style.width = width === undefined ? '100%' : `${width}px`;
+          band.dataset.box = left === undefined ? 'false' : 'true';
+        };
+        // Appearing, it starts where it lands; only a move between two
+        // subjects should glide.
+        if (band.dataset.on !== 'true') {
+          band.style.transition = 'none';
+          put();
+          void band.offsetHeight;
+          band.style.transition = '';
+        }
+        put();
+        band.dataset.on = 'true';
+      },
+      /**
+       * Keeps the band on an element every frame until told otherwise, so a
+       * section that moves after it was measured (data arriving above it, a
+       * sheet settling) stays framed instead of leaving the band behind.
+       */
+      follow(els: Element[] | null) {
+        following = els;
+        if (!els || els.length === 0) {
+          following = null;
+          api.band(null);
+          return;
+        }
+        // Several elements make one band from the top of the first to the
+        // bottom of the last: a choice and the detail it reveals, together.
+        const tick = () => {
+          if (following !== els) return;
+          const live = els.filter((el) => el.isConnected);
+          if (live.length === 0) {
+            following = null;
+            api.band(null);
+            return;
+          }
+          const rects = live.map((el) => el.getBoundingClientRect());
+          const top = Math.max(0, Math.min(...rects.map((r) => r.top)) - 12);
+          const bottom = Math.min(
+            window.innerHeight,
+            Math.max(...rects.map((r) => r.bottom)) + 12
+          );
+          // A phone gets the full width; wider, the box hugs the subject.
+          if (window.innerWidth <= 640) {
+            api.band(top, Math.max(0, bottom - top));
+          } else {
+            const left = Math.max(0, Math.min(...rects.map((r) => r.left)) - 12);
+            const right = Math.min(window.innerWidth, Math.max(...rects.map((r) => r.right)) + 12);
+            api.band(top, Math.max(0, bottom - top), left, Math.max(0, right - left));
+          }
+          requestAnimationFrame(tick);
+        };
+        tick();
+      },
       cursorAt(nx: number, ny: number) {
         place(nx, ny);
       },
@@ -352,5 +471,5 @@ function overlaySource() {
 }
 
 export function installOverlay(page: Page) {
-  return page.addInitScript(overlaySource);
+  return page.addInitScript(overlaySource, { pointer: POINTER, dim: BAND_DIM });
 }

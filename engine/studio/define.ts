@@ -70,6 +70,45 @@ export type DemoConfig<Server = unknown> = {
      * scene fails looking for content. Default none.
      */
     forbid?: (string | RegExp)[];
+    /**
+     * For an app that renders on a server (Next, Remix, SvelteKit with a node
+     * adapter) rather than as static files. Without it the build is served by
+     * `serve.mjs` as a static directory, which only works for an SPA.
+     *
+     * The build is still pinned: `output` is copied into the workspace's
+     * `.build/<output>`, each of `link` is symlinked from the app root beside
+     * it, and `command` runs from that private copy. So `next start` reads a
+     * `.next` nobody else rebuilds, while resolving `node_modules` and
+     * `next.config.js` from the app itself.
+     *
+     * A server renders from its own fetches, which `page.route` never sees,
+     * so `api` is where those get answered: a fake API the workspace owns,
+     * started beside the app, with the build pointed at it. See
+     * references/mocking.md.
+     */
+    server?: {
+      /** Started from `.build`; `$PORT` is set to the studio's port. */
+      command: string;
+      /** App-root paths the server needs beside its build. Default none. */
+      link?: string[];
+      /** Extra runtime environment for the server. */
+      env?: Record<string, string>;
+      /**
+       * A path that answers 200 without a session, polled until the server
+       * is up. Default `/`. An app whose middleware redirects every signed-out
+       * request (including to its own sign-in page, which it also guards)
+       * never answers `/` without a loop; point this at a static file the
+       * middleware skips, such as `/favicon.ico`.
+       */
+      health?: string;
+      api?: {
+        /** Started from the workspace; `$PORT` is set to `port`. */
+        command: string;
+        port: number;
+        /** A path on the API that answers 200 once it is listening. */
+        health: string;
+      };
+    };
   };
   /** Default `{ width: 1920, height: 1080 }`. */
   stage?: { width: number; height: number };
@@ -122,6 +161,12 @@ export type DemoConfig<Server = unknown> = {
    */
   mock?: (page: Page, ctx: MockContext) => Promise<Server>;
   voice?: { name?: string; speed?: number; saidAs?: [RegExp, string][] };
+  /**
+   * Captions cut from the narration: `<scene>.srt`/`.vtt` beside each voiced
+   * clip, plus `<scene>.captioned.mp4` with them burned in. `DEMO_CAPTIONS`
+   * (`1`/`0`) overrides at film time.
+   */
+  captions?: boolean;
   /**
    * The order scenes appear in the manifest and the stitched tour.
    *

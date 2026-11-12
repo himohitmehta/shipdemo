@@ -8,6 +8,7 @@ import {
   BASE_URL,
   LOCALE,
   PORT,
+  SERVER,
   SITE,
   STAGE,
   STILL_SCALE,
@@ -45,7 +46,8 @@ export default defineConfig({
   /** `WORKERS` in `studio/config.ts` carries the reasoning: resolution, not taste. */
   workers: WORKERS,
   retries: 0,
-  timeout: 4 * 60_000,
+  /** A long journey (sign-up to first booking) runs past four minutes with voice; `DEMO_SCENE_MINUTES` lifts it. */
+  timeout: Number(process.env.DEMO_SCENE_MINUTES ?? 4) * 60_000,
   expect: { timeout: 15_000 },
   reporter: [['list']],
   use: {
@@ -107,26 +109,64 @@ export default defineConfig({
    */
   webServer: SITE
     ? undefined
-    : {
-        command: `node ${join(ENGINE_DIR, 'serve.mjs')} ${join(PROJECT, '.build')} ${PORT}`,
-        url: BASE_URL,
-        cwd: PROJECT,
-        /**
-         * Never reused, and never a dev server.
-         *
-         * A corpus run died mid-flight to a dev server whose module graph belongs
-         * to whoever is editing the source: one run when another session touched
-         * the app's own source, one when an install rewrote `node_modules`
-         * underneath the bundler. Both times the scenes that failed looked broken
-         * and were not. `demo/serve.mjs` serves the pinned build
-         * (`demo/.build`), which a keystroke cannot invalidate, and
-         * `demo/pin-build.mjs` builds fresh before every run so the corpus is
-         * always of the code in the tree. It is also the production bundle, which
-         * is what anybody actually ships.
-         */
-        reuseExistingServer: false,
-        stdout: 'ignore',
-        stderr: 'pipe',
-        timeout: 60_000,
-      },
+    : SERVER
+      ? [
+          /**
+           * The fake API first, because the app's server asks it for a
+           * session on its first request. It belongs to the workspace, not
+           * the app: a server-rendered page fetches from its own process,
+           * where `page.route` cannot reach, so this is what answers them.
+           */
+          ...(SERVER.api
+            ? [
+                {
+                  command: SERVER.api.command,
+                  url: `http://localhost:${SERVER.api.port}${SERVER.api.health}`,
+                  cwd: PROJECT,
+                  env: { PORT: String(SERVER.api.port) },
+                  reuseExistingServer: false,
+                  stdout: 'ignore' as const,
+                  stderr: 'pipe' as const,
+                  timeout: 30_000,
+                },
+              ]
+            : []),
+          {
+            /**
+             * The app's own production server, run from the pinned copy in
+             * `.build` for the same reason `serve.mjs` serves one: a build
+             * someone else can rebuild mid-run is not a build.
+             */
+            command: SERVER.command,
+            url: `${BASE_URL}${SERVER.health ?? '/'}`,
+            cwd: join(PROJECT, '.build'),
+            env: { ...SERVER.env, PORT: String(PORT) },
+            reuseExistingServer: false,
+            stdout: 'ignore' as const,
+            stderr: 'pipe' as const,
+            timeout: 60_000,
+          },
+        ]
+      : {
+          command: `node ${join(ENGINE_DIR, 'serve.mjs')} ${join(PROJECT, '.build')} ${PORT}`,
+          url: BASE_URL,
+          cwd: PROJECT,
+          /**
+           * Never reused, and never a dev server.
+           *
+           * A corpus run died mid-flight to a dev server whose module graph belongs
+           * to whoever is editing the source: one run when another session touched
+           * the app's own source, one when an install rewrote `node_modules`
+           * underneath the bundler. Both times the scenes that failed looked broken
+           * and were not. `demo/serve.mjs` serves the pinned build
+           * (`demo/.build`), which a keystroke cannot invalidate, and
+           * `demo/pin-build.mjs` builds fresh before every run so the corpus is
+           * always of the code in the tree. It is also the production bundle, which
+           * is what anybody actually ships.
+           */
+          reuseExistingServer: false,
+          stdout: 'ignore',
+          stderr: 'pipe',
+          timeout: 60_000,
+        },
 });

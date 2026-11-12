@@ -252,7 +252,8 @@ touches, with the default it falls back to when unset.
 | --- | --- | --- |
 | `DEMO_BUILD` | on | set to `0` to film the build already pinned instead of making a new one |
 | `DEMO_PORT` | `5499` | the static server's port; give a second run its own |
-| `DEMO_OUT` | `<repo>/demo-out` | the whole output directory: manifest, stills, clips, in-flight frames |
+| `DEMO_OUT` | `$DEMO_OUT_ROOT/<workspace>` | the whole output directory: manifest, stills, clips, in-flight frames |
+| `DEMO_OUT_ROOT` | `~/demo-reels-out` | the parent every workspace's corpus lands in, one folder per workspace |
 | `DEMO_THEMES` | `dark` | comma-separated list, e.g. `light,dark` |
 | `DEMO_TOUR` | on | set to `0` to skip stitching the end-to-end tour per theme |
 | `DEMO_RUN_ID` | minted per run | internal: do not set by hand, it identifies which entries belong to which concurrent run |

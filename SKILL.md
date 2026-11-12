@@ -5,8 +5,9 @@ description: Films a web app as narrated, zooming, cursor-driven demo videos wit
 
 # Video demo
 
-`scripts/demo` films a web app and writes `demo-out/` into that project's
-workspace: per scene an mp4 with voice-over, a poster, retina stills, plus
+`scripts/demo` films a web app and writes its corpus to
+`~/demo-reels-out/<workspace>/` (`DEMO_OUT_ROOT` moves the
+parent, `DEMO_OUT` names one run's directory): per scene an mp4 with voice-over, a poster, retina stills, plus
 `full-tour.mp4`, `manifest.json` and `index.html`. All local. The engine runs
 from this skill; nothing is installed into the app being filmed.
 
@@ -97,7 +98,7 @@ Each of these cost a run or a user's patience.
    on a scene — twenty seconds instead of four minutes; drop it for the run
    that produces the corpus.
 10. Full run with `DEMO_TRACE_FRAMES=1`, then `scripts/gaps.mjs` and open
-   `demo-out/index.html`. Report the capture table and any slow clips.
+   `<out>/index.html`. Report the capture table and any slow clips.
 
 ## A scene
 
@@ -125,13 +126,17 @@ it wide, so consecutive beats about the same region glide instead of bouncing.
 
 ## Never
 
-Subtitles (the voice is the channel). Cloud TTS (the film is of private data).
+Captions unasked for (the voice is the channel; when asked, `DEMO_CAPTIONS=1`
+writes `.srt`/`.vtt` and a `.captioned.mp4` from the script itself). Cloud TTS (the film is of private data).
 Playwright's `recordVideo` (no control of rate, size or start; the recorder
 replaces it). 4K as a default. Music, intro cards or cross-fades. Scenes
 generated from a route crawl: a scene is choreography with a point. Retries: a
 retried scene is a different film.
 
 ## Also
+
+`DEMO_VOICE_VARIANTS=am_michael,bf_emma` mixes the same take in more voices
+(`<scene>.<voice>.mp4`), for auditioning a voice without re-filming.
 
 [capture.md](references/capture.md) before changing any capture number.
 [runs.md](references/runs.md) for builds, isolation and the manifest.

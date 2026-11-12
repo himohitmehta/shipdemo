@@ -1,6 +1,7 @@
 #!/usr/bin/env node
+import { homedir } from 'node:os';
 import { readFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { basename, join, resolve } from 'node:path';
 
 /**
  * The jank check a mean frame rate cannot make.
@@ -15,7 +16,12 @@ import { join, resolve } from 'node:path';
  */
 
 const OUT_DIR = resolve(
-  process.argv[2] ?? process.env.DEMO_OUT ?? join(process.cwd(), 'demo-out')
+  process.argv[2] ??
+    process.env.DEMO_OUT ??
+    join(
+      process.env.DEMO_OUT_ROOT ?? join(homedir(), 'demo-reels-out'),
+      basename(process.cwd())
+    )
 );
 /**
  * Either a corpus directory or the manifest itself.

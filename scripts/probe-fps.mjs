@@ -44,6 +44,8 @@ function findChromium() {
     'chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing',
     'chrome-mac/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing',
     'chrome-mac/Chromium.app/Contents/MacOS/Chromium',
+    // Chrome for Testing builds (Playwright 1.5x+) use `chrome-linux64`.
+    'chrome-linux64/chrome',
     'chrome-linux/chrome',
     'chrome-win/chrome.exe',
   ];

@@ -5,12 +5,14 @@ import { join } from 'node:path';
 import {
   ANCHOR,
   FPS,
+  MEDIA,
   OUT_DIR,
   STAGE,
   STILL_SCALE,
   THEMES,
   TOUR,
   VIDEO,
+  VOICE_ENABLED,
   tourIndex,
 } from './config.ts';
 import { previewPage } from './preview.ts';
@@ -120,7 +122,9 @@ async function stitchTour(
     `${clips.map((clip) => `file '${join(OUT_DIR, clip)}'`).join('\n')}\n`
   );
 
-  const out = join(OUT_DIR, theme, 'full-tour.mp4');
+  // A media-layout tour has no theme level: the tour sits beside its flows.
+  const rel = MEDIA ? 'full-tour.mp4' : `${theme}/full-tour.mp4`;
+  const out = join(OUT_DIR, rel);
   await run('ffmpeg', [
     '-y',
     '-hide_banner',
@@ -140,7 +144,7 @@ async function stitchTour(
   ]);
   await rm(listPath, { force: true });
 
-  return `${theme}/full-tour.mp4`;
+  return rel;
 }
 
 type Asset = {
@@ -318,7 +322,8 @@ export default async function stitch(): Promise<void> {
       `  ${OUT_DIR}/index.html     open this to look at the corpus\n`
   );
 
-  if (!(await voiceReady())) {
+  // Only when a voice was wanted: `DEMO_VOICE=0` is a choice, not a missing model.
+  if (VOICE_ENABLED && !(await voiceReady())) {
     process.stdout.write(`\n${voiceMissingMessage()}`);
   }
 

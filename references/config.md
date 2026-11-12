@@ -116,6 +116,46 @@ output as static files, never a dev server.
   greps the built output for it before filming anything. Confirm it actually
   isn't there once, by hand, before trusting `forbid` to keep catching it.
 
+### `build.server` — for a server-rendered app
+
+`serve.mjs` hosts static files, which is right for an SPA and wrong for
+anything that renders on a server (Next with RSC, Remix, SvelteKit's node
+adapter). Those pages fetch from the server process, where `page.route`
+never sees the request, so the browser-side mocks cannot answer them and a
+static host cannot run them. `build.server` covers that case:
+
+```ts
+build: {
+  command: 'SKIP_ENV_VALIDATION=1 API_URL=http://localhost:5498 ' +
+    'NEXT_PUBLIC_API_URL=http://localhost:5498 pnpm exec turbo run build --filter=web',
+  output: '.next',
+  forbid: ['api.example.localhost'],
+  server: {
+    command: 'node_modules/.bin/next start -H localhost',
+    link: ['node_modules', 'package.json', 'next.config.js', 'public'],
+    env: { API_URL: 'http://localhost:5498' },
+    health: '/favicon.ico',
+    api: { command: 'node api.mjs', port: 5498, health: '/health' },
+  },
+},
+```
+
+- The build is still pinned. `output` is copied into `.build/<output>`
+  (Next's `cache/` and `dev/` left behind), each `link` is symlinked from the
+  app root beside it, and `command` runs from `.build` with `PORT` set.
+- `api` is a fake API the workspace owns, started first. Point the build and
+  the server at it by environment; the build bakes public URLs in, so they
+  go on `command` as well as in `env`. Key its state by the session cookie
+  so every scene starts clean and parallel scenes stay apart. `mock.ts` then
+  only sets that cookie and refuses every origin but the app and the API.
+- `health` is a path that answers without a session. An auth middleware
+  that redirects every signed-out request — its own sign-in page included —
+  never lets `/` answer, and the run times out waiting for a server that is
+  up. A static file the middleware skips is the usual answer.
+- In a monorepo, build through the task runner (`turbo run build
+  --filter=<app>`), not the app's own `next build`: the latter skips the
+  workspace packages it imports, and a stale `dist` fails it.
+
 ## `stage` — optional, defaults to `{ width: 1920, height: 1080 }`
 
 The CSS viewport a scene is filmed at, not the output resolution — video is

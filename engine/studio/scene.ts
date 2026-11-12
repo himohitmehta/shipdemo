@@ -6,7 +6,7 @@ import { test } from '@playwright/test';
 
 import type { Actor } from './actor.ts';
 import type { ConfigServer } from './config.ts';
-import { ANCHOR, FRAME_DIR, OUT_DIR, STAGE } from './config.ts';
+import { ANCHOR, FOLDER_STRIP, FOLDERS, FRAME_DIR, MEDIA, OUT_DIR, STAGE } from './config.ts';
 import type { Theme } from './define.ts';
 import type { Clip } from './recorder.ts';
 import { Recorder } from './recorder.ts';
@@ -82,10 +82,18 @@ export function scene(
 ) {
   test(name, async ({ page }, info) => {
     const theme = info.project.name as Theme;
-    const themeDir = join(OUT_DIR, theme);
+    // Where this scene's files land, and the same place as the manifest
+    // names it (relative to the output directory).
+    const base =
+      FOLDER_STRIP && name.startsWith(FOLDER_STRIP) ? name.slice(FOLDER_STRIP.length) : name;
+    const rel = MEDIA ? `${base}/videos` : FOLDERS ? `${theme}/${name}` : theme;
+    const photoRel = MEDIA ? `${base}/photos` : rel;
+    const themeDir = join(OUT_DIR, rel);
+    const photoDir = join(OUT_DIR, photoRel);
     const frameDir = join(FRAME_DIR, `${theme}-${name}`);
 
     await mkdir(themeDir, { recursive: true });
+    await mkdir(photoDir, { recursive: true });
 
     await page.setViewportSize({ width: STAGE.width, height: STAGE.height });
 
@@ -106,7 +114,7 @@ export function scene(
     stage.actor.onMotion = (state) => recorder.motion(state);
 
     const shot: SceneContext['shot'] = async (label) => {
-      const file = label ? `${name}-${label}.png` : `${name}.png`;
+      const file = label ? `${base}-${label}.png` : `${base}.png`;
 
       await recorder.pause();
       await stage.actor.overlay(false);
@@ -122,10 +130,10 @@ export function scene(
 
       await stage.actor.settle();
       await page.screenshot({
-        path: join(themeDir, file),
+        path: join(photoDir, file),
         animations: 'disabled',
       });
-      stills.push(`${theme}/${file}`);
+      stills.push(`${photoRel}/${file}`);
 
       await reframe();
       await stage.actor.overlay(true);
@@ -158,7 +166,7 @@ export function scene(
     await stage.actor.say(null);
     await stage.actor.beat(520);
 
-    const clip = await recorder.stop(join(themeDir, name));
+    const clip = await recorder.stop(join(themeDir, base));
 
     const entry: SceneEntry = {
       ...options,
@@ -167,9 +175,9 @@ export function scene(
       stills,
       clip: {
         ...clip,
-        mp4: `${theme}/${name}.mp4`,
-        webm: clip.webm ? `${theme}/${name}.webm` : null,
-        poster: `${theme}/${name}.poster.jpg`,
+        mp4: `${rel}/${base}.mp4`,
+        webm: clip.webm ? `${rel}/${base}.webm` : null,
+        poster: `${rel}/${base}.poster.jpg`,
       },
     };
 

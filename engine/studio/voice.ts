@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { access, mkdir, readFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
@@ -69,6 +70,22 @@ const LINES = join(VOICE_HOME, 'lines');
  */
 const VOICE = process.env.DEMO_VOICE_NAME ?? demo.voice?.name ?? 'af_heart';
 const LANG = process.env.DEMO_VOICE_LANG ?? 'en-us';
+/**
+ * Words said from given phonemes rather than the phonemiser's guess:
+ * `{ "acme": "ˈækmi", "ritu": "ɹˈɪtuː" }`, matched whole-word and
+ * ignoring case. An English voice guesses an Indian name the American way
+ * ("Riddoo"); a respelling can't always steer it, phonemes can. From
+ * `DEMO_VOICE_PHONEMES` (a JSON file) or `demo.voice.phonemes`.
+ */
+const PHONEMES: Record<string, string> = (() => {
+  const file = process.env.DEMO_VOICE_PHONEMES;
+  const table = file
+    ? (JSON.parse(readFileSync(file, 'utf8')) as Record<string, string>)
+    : ((demo.voice as { phonemes?: Record<string, string> } | undefined)?.phonemes ?? {});
+  return Object.fromEntries(
+    Object.entries(table).map(([word, said]) => [word.toLowerCase(), said])
+  );
+})();
 /**
  * Full speed, with short joints.
  *
@@ -157,14 +174,34 @@ const SAID_AS: [RegExp, string][] = [
   ...(demo.voice?.saidAs ?? []),
 ];
 
-function speakable(text: string): string {
-  return SAID_AS.reduce((said, [word, as_]) => said.replace(word, as_), text);
+/**
+ * A line may carry what is said apart from what is shown:
+ * `"Roman caption || देवनागरी speech"`. The voice speaks the part after `||`
+ * (Hinglish in Devanagari reads cleanly to a Hindi voice, where Roman script
+ * or mixed scripts do not); the captions show the part before it.
+ */
+export function spokenPart(text: string): string {
+  const at = text.indexOf(' || ');
+  return at < 0 ? text : text.slice(at + 4);
 }
 
-function keyFor(text: string, model: string): string {
+function speakable(text: string): string {
+  return SAID_AS.reduce((said, [word, as_]) => said.replace(word, as_), spokenPart(text));
+}
+
+/** The table's entries a line uses, so a change re-speaks only those lines. */
+function phonemesFor(text: string): string {
+  const lower = text.toLowerCase();
+  return Object.entries(PHONEMES)
+    .filter(([word]) => new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(lower))
+    .map(([word, said]) => `${word}=${said}`)
+    .join(',');
+}
+
+function keyFor(text: string, model: string, voice: string): string {
   return createHash('sha1')
     .update(
-      `${model}|${VOICE}|${LANG}|${SPEED}|${SENTENCE_PAUSE}|${CLAUSE_PAUSE}|${TARGET_RMS}|${text}`
+      `${model}|${voice}|${LANG}|${SPEED}|${SENTENCE_PAUSE}|${CLAUSE_PAUSE}|${TARGET_RMS}|${phonemesFor(text)}|${text}`
     )
     .digest('hex')
     .slice(0, 16);
@@ -188,14 +225,37 @@ from kokoro_onnx import Kokoro
 job = json.load(sys.stdin)
 kokoro = Kokoro(job["model"], job["voices"])
 
+import re
+table = job.get("phonemes") or {}
+word = re.compile(r"\\b(" + "|".join(sorted(map(re.escape, table), key=len, reverse=True)) + r")\\b", re.I) if table else None
+
+def phonemes(text):
+    out, last = [], 0
+    for m in word.finditer(text):
+        chunk = text[last:m.start()]
+        if chunk.strip():
+            out.append(kokoro.tokenizer.phonemize(chunk, job["lang"]).strip())
+        out.append(table[m.group(1).lower()])
+        last = m.end()
+        tail = re.match(r"[.,;:!?]+", text[last:])
+        if tail:
+            out[-1] += tail.group(0)
+            last += len(tail.group(0))
+    chunk = text[last:]
+    if chunk.strip():
+        out.append(kokoro.tokenizer.phonemize(chunk, job["lang"]).strip())
+    return " ".join(out)
+
 for line in job["lines"]:
     if os.path.exists(line["path"]):
         continue
+    named = word is not None and word.search(line["text"]) is not None
     samples, rate = kokoro.create(
-        line["text"],
+        phonemes(line["text"]) if named else line["text"],
         voice=job["voice"],
         speed=job["speed"],
         lang=job["lang"],
+        is_phonemes=named,
         sentence_pause=job["sentencePause"],
         clause_pause=job["clausePause"],
     )
@@ -226,6 +286,17 @@ function runPython(job: unknown): Promise<void> {
   });
 }
 
+/**
+ * Extra voices to cut the same take with, from `DEMO_VOICE_VARIANTS`
+ * (comma-separated Kokoro names). The picture is filmed once; each variant
+ * is only a second mix over the same silent clip, so auditioning three
+ * voices costs three syntheses rather than three takes.
+ */
+export const VOICE_VARIANTS = (process.env.DEMO_VOICE_VARIANTS ?? '')
+  .split(',')
+  .map((name) => name.trim())
+  .filter((name) => name && name !== VOICE);
+
 export type SpokenLine = Mark & { path: string; seconds: number };
 
 /**
@@ -236,7 +307,10 @@ export type SpokenLine = Mark & { path: string; seconds: number };
  * has to be noticed, and the only way to notice is to know how long it
  * actually is.
  */
-export async function speak(marks: Mark[]): Promise<SpokenLine[]> {
+export async function speak(
+  marks: Mark[],
+  voice: string = VOICE
+): Promise<SpokenLine[]> {
   if (marks.length === 0) {
     return [];
   }
@@ -248,10 +322,21 @@ export async function speak(marks: Mark[]): Promise<SpokenLine[]> {
 
   // Keyed and synthesised on the respelling, so changing the table
   // invalidates only the lines it actually touches.
+  // A Hindi voice reading Latin letters switches the phonemiser to English
+  // mid-line, and Kokoro then speaks its "(en)" / "(hi)" markers aloud.
+  if (LANG.startsWith('hi')) {
+    const latin = marks.filter((mark) => /[A-Za-z]/.test(speakable(mark.text)));
+    if (latin.length > 0) {
+      throw new Error(
+        `voice: a Hindi voice must be given Devanagari only ("caption || बोलना"); Latin letters in:\n` +
+          latin.map((mark) => `  ${mark.text}`).join('\n')
+      );
+    }
+  }
   const lines = marks.map((mark) => ({
     ...mark,
     said: speakable(mark.text),
-    path: join(LINES, `${keyFor(speakable(mark.text), model)}.wav`),
+    path: join(LINES, `${keyFor(speakable(mark.text), model, voice)}.wav`),
   }));
 
   const wanted = lines.filter(
@@ -268,8 +353,9 @@ export async function speak(marks: Mark[]): Promise<SpokenLine[]> {
     await runPython({
       model: MODEL,
       voices: VOICES,
-      voice: VOICE,
+      voice,
       lang: LANG,
+      phonemes: PHONEMES,
       speed: SPEED,
       sentencePause: SENTENCE_PAUSE,
       clausePause: CLAUSE_PAUSE,

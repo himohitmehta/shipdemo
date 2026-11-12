@@ -1,4 +1,5 @@
-import { join } from 'node:path';
+import { homedir } from 'node:os';
+import { basename, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import type { DemoConfig, Theme } from './define.ts';
@@ -130,6 +131,12 @@ if (SITE_URL) {
 /** The live URL being filmed, or null when this run builds and serves. */
 export const SITE = SITE_URL ?? null;
 
+/**
+ * The app's own server, when it has one — see `build.server` in `define.ts`.
+ * Null means the build is static files and `serve.mjs` hosts them.
+ */
+export const SERVER = demo.build?.server ?? null;
+
 function must<T>(value: T | undefined, field: string): T {
   if (value === undefined) {
     throw new Error(`demo.config.ts: ${field} is required`);
@@ -192,6 +199,57 @@ export const STAGE = {
  * smooth 60fps video and the context at 2x for retina stills, and the corpus
  * gets both instead of trading one for the other.
  */
+/**
+ * What the pointer looks like: a mouse arrow, or a fingertip dot for a film
+ * of a phone-sized stage (`DEMO_POINTER=touch`), where an arrow reads wrong.
+ */
+/**
+ * How dark the band's scrim is around its subject (0 to 1). Half black
+ * focuses hard but greys out a colourful screen behind it, so a calendar's
+ * bookings read as broken while the band sits on its header;
+ * `DEMO_BAND_DIM=0.25` keeps the colours and still says where to look.
+ */
+export const BAND_DIM: number = (() => {
+  const n = Number(process.env.DEMO_BAND_DIM ?? 0.5);
+  return Number.isFinite(n) && n >= 0 && n <= 1 ? n : 0.5;
+})();
+
+export const POINTER: 'arrow' | 'touch' =
+  process.env.DEMO_POINTER === 'touch' ? 'touch' : 'arrow';
+
+/**
+ * How a beat draws the eye to its subject: push the camera in (`zoom`), or
+ * keep the app still and dim everything above and below a full-width band
+ * around it (`DEMO_FOCUS=band`). On a phone-sized stage a push-in crops the
+ * section it meant to show, so a film of one reads better with the band.
+ */
+export const FOCUS: 'zoom' | 'band' =
+  process.env.DEMO_FOCUS === 'band' ? 'band' : 'zoom';
+
+/**
+ * Whether each scene's files go in a folder of their own
+ * (`<theme>/<scene>/<scene>.mp4`, its stills, captions and poster) rather
+ * than all side by side in `<theme>/` (`DEMO_FOLDERS=1`). Easier to pick up
+ * one flow's files by hand.
+ */
+export const FOLDERS = process.env.DEMO_FOLDERS === '1' || process.env.DEMO_FOLDERS === 'media';
+
+/**
+ * `DEMO_FOLDERS=media`: one folder per flow, the clip and its captions and
+ * poster in `videos/`, the stills in `photos/` (`<flow>/videos/<flow>.mp4`,
+ * `<flow>/photos/<flow>-<label>.png`), with no theme level. For a tour
+ * handed over as a set.
+ */
+export const MEDIA = process.env.DEMO_FOLDERS === 'media';
+
+/**
+ * A prefix taken off scene names for their folder and file names
+ * (`DEMO_FOLDER_STRIP=gym-desk-` files `gym-desk-01-onboarding` as
+ * `01-onboarding`), so a workspace can keep unique scene names while a
+ * tour's folders read cleanly.
+ */
+export const FOLDER_STRIP = process.env.DEMO_FOLDER_STRIP ?? '';
+
 export const VIDEO_SCALE = Number(process.env.DEMO_VIDEO_SCALE ?? 1);
 export const STILL_SCALE = Number(process.env.DEMO_STILL_SCALE ?? 2);
 
@@ -301,11 +359,21 @@ export const PORT = Number(process.env.DEMO_PORT ?? 5499);
 export const BASE_URL = SITE ?? `http://localhost:${PORT}`;
 
 /**
+ * Every corpus is kept together, one folder per workspace
+ * (`<root>/<workspace name>`), rather than inside each workspace.
+ * `DEMO_OUT_ROOT` moves the parent; `DEMO_OUT` still names one run's
+ * directory outright.
+ */
+export const DEMO_OUT_ROOT =
+  process.env.DEMO_OUT_ROOT ?? join(homedir(), 'demo-reels-out');
+
+/**
  * Where the corpus lands, and where frames wait to be encoded. Both are
  * absolute, resolved from `APP_ROOT` rather than `process.cwd()` — see the
  * comment on `APP_ROOT` for why that distinction is load-bearing.
  */
-export const OUT_DIR = process.env.DEMO_OUT ?? join(PROJECT, 'demo-out');
+export const OUT_DIR =
+  process.env.DEMO_OUT ?? join(DEMO_OUT_ROOT, basename(PROJECT));
 
 /**
  * Inside the output directory, so `DEMO_OUT` isolates a whole run.
@@ -340,3 +408,8 @@ export const TRACE_FRAMES = Boolean(process.env.DEMO_TRACE_FRAMES);
 
 /** Off films silent rather than downloading the voice model behind anyone's back. */
 export const VOICE_ENABLED = process.env.DEMO_VOICE !== '0';
+
+/** Sidecar `.srt`/`.vtt` and a burned-in copy per voiced clip (`captions.ts`). */
+export const CAPTIONS =
+  process.env.DEMO_CAPTIONS === '1' ||
+  (process.env.DEMO_CAPTIONS !== '0' && demo.captions === true);

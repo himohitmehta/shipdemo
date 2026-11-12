@@ -1,5 +1,6 @@
 import type { Locator, Page } from '@playwright/test';
 
+import { FOCUS, POINTER } from './config.ts';
 import { spokenFor } from './voice.ts';
 
 /**
@@ -89,6 +90,39 @@ export class Actor {
 
     await this.release();
     return this.measure(target, at);
+  }
+
+  /**
+   * Scrolls a target into the middle of the screen when it sits off it, or
+   * under a fixed header or bottom bar (a phone's tab bar covers the last
+   * ~70px), so a press lands on it rather than on whatever covers it. Smooth,
+   * since it is filmed; a no-op for anything already clear.
+   */
+  private async bringIntoView(target: Target) {
+    const found = this.locate(target);
+    if (!('boundingBox' in found)) return;
+    await found.first().waitFor({ state: 'visible' }).catch(() => {});
+    const moved = await found
+      .first()
+      .evaluate((el) => {
+        const box = el.getBoundingClientRect();
+        const covered = (y: number) => {
+          const at = document.elementFromPoint(box.left + box.width / 2, y);
+          return at !== null && at !== el && !el.contains(at);
+        };
+        const clear =
+          box.top >= 0 &&
+          box.bottom <= window.innerHeight &&
+          box.left >= 0 &&
+          box.right <= window.innerWidth &&
+          !covered(box.top + Math.min(box.height / 2, 12));
+        if (clear) return false;
+        // Sideways too: a phone's tab rows and chips scroll horizontally.
+        el.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
+        return true;
+      })
+      .catch(() => false);
+    if (moved) await this.beat(700);
   }
 
   /** Whether a screen point is somewhere the pointer can actually reach. */
@@ -209,6 +243,7 @@ export class Actor {
     target: Target,
     options: { before?: number; after?: number; at?: Point } = {}
   ) {
+    await this.bringIntoView(target);
     await this.to(target, { at: options.at });
     await this.beat(options.before ?? 180);
 
@@ -361,6 +396,8 @@ export class Actor {
   private pendingRelease: { ms?: number } | null = null;
 
   private zoomed = false;
+  /** Whether the focus band is showing (`DEMO_FOCUS=band`). */
+  private banded = false;
   /** What the pointer is currently pointing at, in app coordinates. */
   private subject: Point | null = null;
   private width = 1920;
@@ -436,6 +473,53 @@ export class Actor {
       x: box.x + Math.min(box.width * 0.08, 46),
       y: box.y + box.height / 2,
     });
+
+    if (FOCUS === 'band') {
+      const found = this.locate(target);
+      if ('boundingBox' in found) {
+        // A subject off the screen (a phone's long pages) is brought onto it
+        // first: centred when it fits, from its top when it is taller.
+        const moved = await found
+          .evaluateAll((els) => {
+            const live = els.filter((el) => el.isConnected);
+            if (live.length === 0) return false;
+            const rects = live.map((el) => el.getBoundingClientRect());
+            const top = Math.min(...rects.map((r) => r.top));
+            const bottom = Math.max(...rects.map((r) => r.bottom));
+            const h = window.innerHeight;
+            if (top >= 56 && bottom <= h - 72) return false;
+            const first = live[rects.findIndex((r) => r.top === top)];
+            first.scrollIntoView({ block: bottom - top <= h - 140 ? 'center' : 'start', behavior: 'smooth' });
+            return true;
+          })
+          .catch(() => false);
+        if (moved) await this.beat(700);
+        // Every match, not the first: a target built with `.or()` frames
+        // all its parts in one band.
+        await found.evaluateAll((els) => window.__demo?.follow(els));
+      } else {
+        const top = Math.max(0, box.y - 10);
+        await this.page.evaluate((at) => window.__demo?.band(at, 20), top);
+      }
+      this.banded = true;
+      // The section is shown whole, so the finger waits at its right edge
+      // rather than over the words.
+      const edge = this.toApp({
+        x: box.x + Math.max(box.width - 28, box.width / 2),
+        y: box.y + box.height / 2,
+      });
+      // A fingertip resting on a section would hover it, which no real
+      // finger does; it stays where it last tapped.
+      // A mouse parked there hovers it too (row tints, tooltips on its last
+      // button), so the band never moves the pointer: it rests on what it
+      // last pressed. `point: true` asks for it anyway.
+      if (options.point === true && POINTER !== 'touch') {
+        await Promise.all([this.moveTo(this.toScreen(edge), 620), this.beat(420)]);
+      } else {
+        await this.beat(420);
+      }
+      return;
+    }
 
     if (this.framed(subject, scale)) {
       if (options.point !== false) {
@@ -516,6 +600,11 @@ export class Actor {
    * next one, which is one movement rather than three.
    */
   async unfocus(options: { ms?: number } = {}) {
+    if (this.banded) {
+      this.banded = false;
+      await this.page.evaluate(() => window.__demo?.follow(null));
+      await this.beat(320);
+    }
     if (!this.zoomed) {
       return;
     }
