@@ -1,0 +1,10 @@
+{
+  "$comment": "One per product. The script step, the voice and the checks read it. Copy it into the workspace (beside demo.config.ts) and fill it in.",
+  "product": "Acme",
+  "audience": "owners of small shops",
+  "closing": "That's it. Try it free at acme dot com.",
+  "names": ["Acme", "Ritu"],
+  "heardAs": { "acne": "acme" },
+  "neverSay": ["automatically", "seamless", "revolutionary"],
+  "neverOnScreen": ["localhost", "went wrong", "couldn't", "failed to", "invalid", "is required", "try again", "validation", "undefined", "NaN"]
+}

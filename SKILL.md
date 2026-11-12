@@ -83,7 +83,11 @@ Each of these cost a run or a user's patience.
    ([mocking.md](references/mocking.md)). Read the still: signed in, seeded
    data, right theme, no login page. Read the capture line. Fix until both are
    right, then write `demo/ui.ts` with only what the smoke run proved.
-7. **Film what they asked for, at the scope they asked for it.** A named
+7. **Write the script first.** Fill the workspace's `profile.json` (copy
+   `template/profile.json`; product, audience, closing line, banned words),
+   then write every line by [script.md](references/script.md): hook, steps,
+   payoff, close. The hook also goes in `hooks.json` for the variants.
+   **Film what they asked for, at the scope they asked for it.** A named
    feature is one scene: write it, film it, hand it over. Do not answer "record
    the search on the home page" with a ten-scene proposal, and do not quietly
    widen the ask because the product has more in it. Only when the request is
@@ -97,8 +101,15 @@ Each of these cost a run or a user's patience.
    stills after every batch. `DEMO_BUILD=0 scripts/demo` skips the rebuild while iterating
    on a scene — twenty seconds instead of four minutes; drop it for the run
    that produces the corpus.
-10. Full run with `DEMO_TRACE_FRAMES=1`, then `scripts/gaps.mjs` and open
-   `<out>/index.html`. Report the capture table and any slow clips.
+10. Full run with `DEMO_CAPTIONS=1 DEMO_TRACE_FRAMES=1`, then
+   `scripts/check.mjs <out>` and open `<out>/index.html`. Report the capture
+   table, any slow clips and every flag the checks raise.
+11. **Variants.** Ask which they want, unless they said: `reel`,
+   `wide-phone`, `wide-laptop`, `wide-laptop-zoom`, `web`, or `all`
+   (`scripts/variants.mjs --list` describes each). Then
+   `scripts/variants.mjs <out> --only <list>`. Phone presets take portrait
+   recordings and laptop presets landscape ones, so film both sizes when they
+   want both. Read one poster per variant before handing them over.
 
 ## A scene
 
@@ -126,12 +137,30 @@ it wide, so consecutive beats about the same region glide instead of bouncing.
 
 ## Never
 
-Captions unasked for (the voice is the channel; when asked, `DEMO_CAPTIONS=1`
-writes `.srt`/`.vtt` and a `.captioned.mp4` from the script itself). Cloud TTS (the film is of private data).
+Cloud TTS (the film is of private data).
 Playwright's `recordVideo` (no control of rate, size or start; the recorder
 replaces it). 4K as a default. Music, intro cards or cross-fades. Scenes
 generated from a route crawl: a scene is choreography with a point. Retries: a
 retried scene is a different film.
+
+## Captions, checks and variants
+
+Captions are on for anything meant to be posted (`DEMO_CAPTIONS=1`): `.srt`,
+`.vtt`, `.lines.json` and a `.captioned.mp4`, cut from the script itself, so
+they match the voice word for word. Burned captions sit at the bottom, raised
+clear of player controls (`DEMO_CAPTION_MARGIN` overrides; never on top).
+
+`scripts/check.mjs` runs three checks: **voice** (each line transcribed and
+compared with its script), **screen** (every half second read for the
+profile's `neverOnScreen` words, then anything drawn in red) and **frames**
+(slow gaps). A missing tool is skipped with the command to install it
+(`scripts/install-checks.sh`). Red that belongs there, like an overdue badge,
+is listed too: read the list, don't count it.
+
+`scripts/variants.mjs` reads `variants/presets.json`. A new variant is a new
+entry there: canvas, where the app sits, where the hook and captions go, and
+`zoom` if it should push in on highlights. Nothing re-films; the originals are
+never touched.
 
 ## Also
 

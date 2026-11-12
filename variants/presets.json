@@ -1,0 +1,50 @@
+{
+  "$comment": "One entry per variant. Sizes are pixels on the output canvas. `source` picks which recordings a preset uses: portrait (phone) or landscape (laptop). Add a variant by adding an entry; scripts/variants.mjs reads this file.",
+  "background": { "top": "#F7F3EC", "bottom": "#EAE3D6" },
+  "text": { "colour": "#1A1A1A", "font": "Noto Sans" },
+  "presets": [
+    {
+      "name": "reel",
+      "about": "9:16 for Instagram Reels, Facebook Reels and YouTube Shorts. The bottom 15% stays clear for the platform's own caption and buttons.",
+      "source": "portrait",
+      "canvas": [1080, 1920],
+      "app": { "x": 190, "y": 232, "w": 700, "h": 1244, "radius": 42 },
+      "hook": { "x": 0, "w": 1080, "y": 64, "size": 58, "lines": 2 },
+      "captions": { "size": 57, "bottom": 293, "left": 40, "right": 40 }
+    },
+    {
+      "name": "wide-phone",
+      "about": "16:9 for YouTube, X and LinkedIn from a phone recording: the phone on the left, the hook and captions on the right.",
+      "source": "portrait",
+      "canvas": [1920, 1080],
+      "app": { "x": 260, "y": 60, "w": 540, "h": 960, "radius": 34 },
+      "hook": { "x": 960, "w": 880, "y": 300, "size": 64, "lines": 2 },
+      "captions": { "size": 49, "bottom": 368, "left": 1000, "right": 40 }
+    },
+    {
+      "name": "wide-laptop",
+      "about": "16:9 for YouTube, X and LinkedIn from a laptop recording, framed at 75% with the hook above it.",
+      "source": "landscape",
+      "canvas": [1920, 1080],
+      "app": { "x": 240, "y": 128, "w": 1440, "h": 810, "radius": 20 },
+      "hook": { "x": 0, "w": 1920, "y": 34, "size": 54, "lines": 1 },
+      "captions": { "size": 39, "bottom": 15, "left": 50, "right": 50 }
+    },
+    {
+      "name": "wide-laptop-zoom",
+      "about": "wide-laptop, zooming in on each highlighted part (found from the dimmed band) and back out when it ends.",
+      "source": "landscape",
+      "canvas": [1920, 1080],
+      "app": { "x": 240, "y": 128, "w": 1440, "h": 810, "radius": 20 },
+      "hook": { "x": 0, "w": 1920, "y": 34, "size": 54, "lines": 1 },
+      "captions": { "size": 39, "bottom": 15, "left": 50, "right": 50 },
+      "zoom": { "max": 1.6 }
+    },
+    {
+      "name": "web",
+      "about": "For a website: the plain clip, its .vtt captions and poster, and embed.html showing how a page frames it. Nothing is burned in.",
+      "source": "any",
+      "kind": "web"
+    }
+  ]
+}
