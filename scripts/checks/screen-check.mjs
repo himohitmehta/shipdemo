@@ -54,6 +54,10 @@ async function pool(items, size, work) {
 }
 
 const read = (image) => run('tesseract', [image, '-', '--psm', '11']).then((t) => t.replace(/\s+/g, ' ').trim()).catch(() => '');
+/** Only the words tesseract is sure of: red masks are sparse, and the rest is noise. */
+const readSure = (image) => run('tesseract', [image, '-', '--psm', '11', 'tsv']).then((tsv) => tsv.split('\n').slice(1)
+  .map((row) => row.split('\t')).filter((c) => Number(c[10]) >= 80 && /^[A-Za-z][A-Za-z'’-]{2,}$/.test(c[11] ?? ''))
+  .map((c) => c[11]).join(' ')).catch(() => '');
 
 /** Streams the clip as raw RGB and writes a black-on-white mask of each frame's strong red. */
 async function redFrames(clip, dir) {
@@ -101,10 +105,10 @@ for (const clip of argv) {
       if (m) hits.push(`  ${(i / FPS).toFixed(1)} s: …${t.slice(Math.max(0, m.index - 30), m.index + m[0].length + 30)}…`);
     });
     const reds = await redFrames(clip, dir);
-    const redTexts = await pool(reds, workers, (r) => read(r.file));
+    const redTexts = await pool(reds, workers, (r) => readSure(r.file));
     const redWords = new Map();
     redTexts.forEach((t, i) => {
-      if (/[a-z]{3,}/i.test(t)) {
+      if (t.split(' ').length >= 2) {
         const key = t.slice(0, 80);
         if (!redWords.has(key)) redWords.set(key, reds[i].at);
       }
