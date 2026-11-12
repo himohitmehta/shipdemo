@@ -1,4 +1,4 @@
-import { scene } from 'video-demo/scene';
+import { scene } from 'shipdemo/scene';
 
 /**
  * The first thing to film, and the only scene that ships with the template.

@@ -99,11 +99,13 @@ else
   npm install
 fi
 
-# How a workspace resolves `video-demo/scene` and friends: its own
+# How a workspace resolves `shipdemo/scene` and friends (and `video-demo/*`,
+# which scenes written before the rename import): its own
 # `node_modules` symlink points here, and this points back at the skill root,
 # where the `exports` map turns those specifiers into engine paths. One link,
 # and nothing has to be installed into anybody's project.
 mkdir -p node_modules
+ln -sfn .. node_modules/shipdemo
 ln -sfn .. node_modules/video-demo
 
 printf '\ninstall: chromium (about 150MB)\n'

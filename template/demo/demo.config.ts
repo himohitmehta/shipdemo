@@ -1,5 +1,5 @@
-import { defineDemo } from 'video-demo/define';
-import { all, attribute, visible } from 'video-demo/ready';
+import { defineDemo } from 'shipdemo/define';
+import { all, attribute, visible } from 'shipdemo/ready';
 
 /**
  * The one file that knows this app exists.

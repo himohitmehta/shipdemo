@@ -103,10 +103,10 @@ else
   fail 'engine not installed' "$SKILL/scripts/install.sh"
 fi
 
-if [ -L "$SKILL/node_modules/video-demo" ]; then
-  ok 'workspaces can resolve video-demo/*'
+if [ -L "$SKILL/node_modules/shipdemo" ]; then
+  ok 'workspaces can resolve shipdemo/*'
 else
-  fail 'the video-demo self-link is missing' "$SKILL/scripts/install.sh"
+  fail 'the shipdemo self-link is missing' "$SKILL/scripts/install.sh"
 fi
 
 VOICE_HOME="${DEMO_VOICE_HOME:-$HOME/.cache/demo-voice}"

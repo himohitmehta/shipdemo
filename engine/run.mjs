@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { existsSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { readFile, readdir } from 'node:fs/promises';
 import { homedir } from 'node:os';
@@ -22,7 +23,16 @@ import { join, resolve } from 'node:path';
  * A script can look at what it is forwarding.
  */
 
-const HOME = join(homedir(), '.video-demo');
+/**
+ * Workspaces live in `~/.shipdemo/<key>` (`SHIPDEMO_HOME` moves it). A machine
+ * that already has `~/.video-demo` from the skill shipdemo started from keeps
+ * using it until `~/.shipdemo` exists, so its workspaces still resolve.
+ */
+const HOME =
+  process.env.SHIPDEMO_HOME ??
+  (!existsSync(join(homedir(), '.shipdemo')) && existsSync(join(homedir(), '.video-demo'))
+    ? join(homedir(), '.video-demo')
+    : join(homedir(), '.shipdemo'));
 
 function usage(message) {
   process.stderr.write(

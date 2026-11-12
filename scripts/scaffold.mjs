@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { existsSync } from 'node:fs';
 import {
   cp,
   mkdir,
@@ -30,7 +31,16 @@ import { fileURLToPath } from 'node:url';
 
 const SKILL = fileURLToPath(new URL('../', import.meta.url));
 const TEMPLATE = join(SKILL, 'template/demo');
-const HOME = join(homedir(), '.video-demo');
+/**
+ * Workspaces live in `~/.shipdemo/<key>` (`SHIPDEMO_HOME` moves it). A machine
+ * that already has `~/.video-demo` from the skill shipdemo started from keeps
+ * using it until `~/.shipdemo` exists, so its workspaces still resolve.
+ */
+const HOME =
+  process.env.SHIPDEMO_HOME ??
+  (!existsSync(join(homedir(), '.shipdemo')) && existsSync(join(homedir(), '.video-demo'))
+    ? join(homedir(), '.video-demo')
+    : join(homedir(), '.shipdemo'));
 
 const argv = process.argv.slice(2);
 let site = null;
@@ -62,7 +72,7 @@ if (!site && !target) {
     'scaffold: name what to film.\n\n' +
       '  scaffold.mjs <appRoot>            build the repo at <appRoot> and film it\n' +
       '  scaffold.mjs --site <url>         film a URL that is already live\n\n' +
-      '  --project <path>   put the workspace here instead of ~/.video-demo/<key>\n' +
+      '  --project <path>   put the workspace here instead of ~/.shipdemo/<key>\n' +
       '  --force            replace an existing workspace\n'
   );
   process.exit(1);
@@ -142,8 +152,8 @@ await cp(
 if (site) {
   await writeFile(
     join(project, 'demo.config.ts'),
-    `import { defineDemo } from 'video-demo/define';
-import { networkIdle } from 'video-demo/ready';
+    `import { defineDemo } from 'shipdemo/define';
+import { networkIdle } from 'shipdemo/ready';
 
 /**
  * A live URL, filmed as it stands: no build, no mocks, no pinned clock. The
@@ -258,6 +268,8 @@ await writeFile(
         baseUrl: '.',
         paths: {
           ...(await appPaths()),
+          'shipdemo/*': [join(SKILL, 'engine/studio/*')],
+          // Scenes written before the rename still import `video-demo/*`.
           'video-demo/*': [join(SKILL, 'engine/studio/*')],
         },
       },
@@ -302,6 +314,7 @@ async function linkModules() {
   const modules = join(project, 'node_modules');
   await mkdir(modules, { recursive: true });
 
+  await link(join(modules, 'shipdemo'), SKILL);
   await link(join(modules, 'video-demo'), SKILL);
   await link(join(modules, '@playwright'), join(SKILL, 'node_modules/@playwright'));
   await link(join(modules, '.bin'), join(SKILL, 'node_modules/.bin'));
@@ -315,7 +328,7 @@ async function linkModules() {
   let linked = 0;
 
   for (const entry of entries) {
-    if (entry === '.bin' || entry === 'video-demo' || entry === '@playwright') {
+    if (entry === '.bin' || entry === 'shipdemo' || entry === 'video-demo' || entry === '@playwright') {
       continue;
     }
     const before = await stat(join(modules, entry)).catch(() => null);

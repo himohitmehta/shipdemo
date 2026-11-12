@@ -43,7 +43,7 @@ Each of these cost a run or a user's patience.
 ## Workflow
 
 1. **Pick the mode from what you were given. Do not ask.** An http(s) URL on
-   a public host is `site`, workspace `~/.video-demo/<host>/`. A URL on
+   a public host is `site`, workspace `~/.shipdemo/<host>/`. A URL on
    localhost or a private address is a dev server: find the repo behind it and
    treat the request as that repo. No URL means the repo you are in, so walk
    up and look for a web app (a `package.json` with a build script beside a

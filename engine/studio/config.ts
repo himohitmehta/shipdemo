@@ -40,7 +40,7 @@ const demo = loaded.default;
 
 /**
  * The workspace: where this project's config, scenes and corpus live. Its own
- * directory by default (`~/.video-demo/<key>`), or wherever `--project` put
+ * directory by default (`~/.shipdemo/<key>`), or wherever `--project` put
  * it, including inside the app's repo for a team that commits scenes.
  */
 export const PROJECT =
