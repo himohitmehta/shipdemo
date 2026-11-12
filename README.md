@@ -6,7 +6,8 @@ It works with Claude Code and other agents that support skills. Everything runs 
 
 ### See it: one recording, every variant (53 seconds)
 
-<!-- SHOWCASE: on publishing, drag shipdemo-showcase.mp4 into this README in GitHub's editor; it pastes a user-attachments link that plays here. -->
+https://github.com/user-attachments/assets/5fe975a1-3ab3-46fd-b68b-f83bb843e30e
+
 
 The sample is a gym's Home screen from [Saroh](https://saroh.in), filmed once on a phone and once on a laptop, then exported as each variant below.
 
