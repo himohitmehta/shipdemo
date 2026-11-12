@@ -4,7 +4,26 @@
 
 It works with Claude Code and other agents that support skills. Everything runs on your own machine.
 
-<!-- TODO before publishing: a 10-second sample video here (framed reel + wide laptop with zoom). -->
+### See it: one recording, every variant (53 seconds)
+
+<!-- SHOWCASE: on publishing, drag shipdemo-showcase.mp4 into this README in GitHub's editor; it pastes a user-attachments link that plays here. -->
+
+The sample is a gym's Home screen from [Saroh](https://saroh.in), filmed once on a phone and once on a laptop, then exported as each variant below.
+
+| `reel` | `wide-phone` |
+|---|---|
+| <img src=".github/media/reel.jpg" width="220" alt="A phone screen framed in 9:16 with the hook above it and the caption below"> | <img src=".github/media/wide-phone.jpg" width="480" alt="A phone screen on the left of a 16:9 frame, with the hook and caption on the right"> |
+| Instagram Reels, Facebook Reels, YouTube Shorts | YouTube, X, LinkedIn |
+
+| `wide-laptop` | `wide-laptop-zoom` |
+|---|---|
+| <img src=".github/media/wide-laptop.jpg" width="480" alt="A laptop screen framed in 16:9 with the hook above and the caption below"> | <img src=".github/media/wide-laptop-zoom.jpg" width="480" alt="The same frame, zoomed in on the highlighted buttons"> |
+| YouTube, X, LinkedIn | the same, zooming in on each highlight |
+
+| `web` |
+|---|
+| <img src=".github/media/web.jpg" width="480" alt="The plain laptop recording, with no frame or burned-in captions"> |
+| your website: the plain video, a captions file and an embed snippet |
 
 ## Use it for
 
