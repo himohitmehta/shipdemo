@@ -257,7 +257,7 @@ async function web(clip, dir) {
     <track kind="captions" src="${name}.vtt" srclang="en" label="English" default>
   </video>
 </figure>
-`);
+`);  return join(dir, `${name}.mp4`);
 }
 
 // ---------------------------------------------------------------- run
@@ -272,13 +272,15 @@ for (const preset of chosen) {
   await mkdir(dir, { recursive: true });
   for (const clip of takes) {
     const started = Date.now();
-    if (preset.kind === 'web') await web(clip, dir);
+    let note = hooks[clip.name] || preset.kind === 'web' ? '' : ' (no hook)';
+    let file = join(dir, `${clip.name}.mp4`);
+    if (preset.kind === 'web') file = await web(clip, dir);
     else {
-      const zoomed = await framed(clip, preset, join(dir, `${clip.name}.mp4`));
-      if (preset.zoom) process.stdout.write(`  zoomed ${zoomed.toFixed(1)} s of ${clip.duration.toFixed(1)} s\n`);
+      const zoomed = await framed(clip, preset, file);
+      if (preset.zoom) note += `, zoomed ${zoomed.toFixed(1)} of ${clip.duration.toFixed(1)} s`;
     }
     made++;
-    process.stdout.write(`${preset.name}: ${clip.name}${hooks[clip.name] || preset.kind === 'web' ? '' : ' (no hook)'} → ${join(dir, clip.name)}.mp4 (${((Date.now() - started) / 1000).toFixed(0)} s)\n`);
+    process.stdout.write(`${preset.name}: ${clip.name}${note} → ${file} (${((Date.now() - started) / 1000).toFixed(0)} s)\n`);
   }
 }
 process.stdout.write(`variants: ${made} written under ${out}\n`);
