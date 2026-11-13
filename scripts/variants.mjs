@@ -227,11 +227,19 @@ async function framed(clip, preset, target) {
     const graph = `${pre}${source}scale=${W}:${H}:flags=lanczos,format=rgba[v];[2:v]format=gray[m];[v][m]alphamerge[vr];` +
       `[3:v]format=gray[sm];color=c=black:s=${W + 120}x${H + 120}[sc];[sc][sm]alphamerge[sh];` +
       `[0:v][sh]overlay=${X - 60}:${Y - 42}[b1];[b1][vr]overlay=${X}:${Y}[b2];` +
-      `[b2]${draw ? `${draw},` : ''}subtitles='${escapeFilterPath(`${clip.base}.srt`)}':force_style='${style}',format=yuv420p[out]`;
+      `[b2]${draw ? `${draw},` : ''}subtitles='${escapeFilterPath(`${clip.base}.srt`)}':force_style='${style}',scale=out_range=tv,format=yuv420p[out]`;
     await writeFile(join(tmp, 'graph.txt'), graph);
     await ff(['-loop', '1', '-i', join(tmp, 'bg.png'), '-i', `${clip.base}.mp4`, '-loop', '1', '-i', join(tmp, 'mask.png'),
       '-loop', '1', '-i', join(tmp, 'shadow.png'), '-filter_complex_script', join(tmp, 'graph.txt'),
-      '-map', '[out]', '-map', '1:a?', '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-r', '60',
+      // Plain yuv420p, limited range: the PNG frame would otherwise make it
+      // yuvj420p (full range), which phones, browsers and social players
+      // show as a blank or black screen.
+      // 30 fps, level 4.0: what Reels, Shorts and LinkedIn ask for, and what
+      // every phone and player decodes (1080x1920 at 60 needs level 4.2,
+      // which some players show as a black screen with sound).
+      '-map', '[out]', '-map', '1:a?', '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-r', '30', '-g', '60',
+      '-pix_fmt', 'yuv420p', '-color_range', 'tv', '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709',
+      '-profile:v', 'high', '-level:v', '4.0',
       '-c:a', 'copy', '-movflags', '+faststart', '-t', clip.duration.toFixed(3), target]);
     await ff(['-ss', (clip.duration * 0.4).toFixed(2), '-i', target, '-frames:v', '1', '-q:v', '3', target.replace(/\.mp4$/, '.poster.jpg')]);
     return zoomed;
