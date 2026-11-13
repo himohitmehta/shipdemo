@@ -33,7 +33,8 @@ if (spawnSync('tesseract', ['--version']).status !== 0) {
 }
 
 const banned = profile.neverOnScreen ?? ['localhost', 'went wrong', "couldn't", 'failed to', 'invalid', 'is required', 'try again', 'validation', 'undefined', 'NaN'];
-const pattern = new RegExp(banned.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/'/g, ".")).join('|'), 'i');
+// Whole words only: "NaN" must not match inside "Ananya".
+const pattern = new RegExp(`(?<![A-Za-z])(?:${banned.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/'/g, ".")).join('|')})(?![A-Za-z])`, 'i');
 const FPS = 2;
 
 const run = (cmd, args) => new Promise((ok, no) => {

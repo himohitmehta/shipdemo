@@ -2,8 +2,9 @@
 /**
  * Checks recorded clips before anyone posts them.
  *
- *   check.mjs <corpus dir | clip.mp4> [--profile profile.json] [--only voice,screen,frames]
+ *   check.mjs <corpus dir | clip.mp4> [--profile profile.json] [--only script,voice,screen,frames]
  *
+ * script  no line over 18 words or using a profile `neverSay` word
  * voice   every narrated line sounds like its script (faster-whisper)
  * screen  no error text on screen: banned words, then anything in red (tesseract)
  * frames  no clip stutters: slow frame gaps against fast ones (needs a run
@@ -22,7 +23,7 @@ import { fileURLToPath } from 'node:url';
 const SKILL = fileURLToPath(new URL('../', import.meta.url));
 const argv = process.argv.slice(2);
 const take = (name) => { const i = argv.indexOf(name); if (i < 0) return null; const v = argv[i + 1]; argv.splice(i, 2); return v; };
-const only = (take('--only') ?? 'voice,screen,frames').split(',');
+const only = (take('--only') ?? 'script,voice,screen,frames').split(',');
 let profile = take('--profile');
 const target = argv[0] ? resolve(argv[0]) : null;
 if (!target || !existsSync(target)) {
@@ -58,6 +59,7 @@ const step = (name, cmd, args) => {
 };
 const withProfile = profile ? ['--profile', profile] : [];
 
+if (only.includes('script')) step('script', process.execPath, [join(SKILL, 'scripts/checks/script-check.mjs'), ...withProfile, ...list]);
 if (only.includes('voice')) {
   const python = [join(homedir(), '.cache/shipdemo/voice-check/.venv/bin/python'), join(homedir(), '.cache/demo-voice-check/.venv/bin/python')].find(existsSync);
   if (python) step('voice', python, [join(SKILL, 'scripts/checks/voice-check.py'), ...withProfile, ...list]);
