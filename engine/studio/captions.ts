@@ -26,7 +26,9 @@ const MAX_CUE = LINE * 2;
 
 /** Breaks a long line at its sentences, then its clauses, then its middle. */
 function pieces(text: string): string[] {
-  const sentences = text.match(/[^.!?]+[.!?]+["')\]]*\s*|[^.!?]+$/g) ?? [text];
+  // A sentence ends at a stop followed by a space or the end: "saroh.in" and
+  // "2.5" stay whole.
+  const sentences = text.split(/(?<=[.!?]+["')\]]*)\s+/);
   return sentences
     .map((sentence) => sentence.trim())
     .filter(Boolean)
